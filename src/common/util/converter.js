@@ -105,3 +105,15 @@ export const volumeUnitString = (unit, t) => {
 export const volumeFromLiters = (value, unit) => value / volumeConverter(unit);
 
 export const volumeToLiters = (value, unit) => value * volumeConverter(unit);
+
+import coordtransform from 'coordtransform';
+
+const wgs84ToGcj02 = (lon, lat) => {
+  return coordtransform.wgs84togcj02(lon, lat);
+};
+
+const gcj02ToWgs84 = (lon, lat) => {
+  return coordtransform.gcj02towgs84(lon, lat);
+};
+
+export {wgs84ToGcj02, gcj02ToWgs84};

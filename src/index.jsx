@@ -11,6 +11,10 @@ import NativeInterface from './common/components/NativeInterface';
 import ServerProvider from './ServerProvider';
 import ErrorBoundary from './ErrorBoundary';
 import AppThemeProvider from './AppThemeProvider';
+import VConsole from 'vconsole';
+const vConsole = new VConsole({
+    theme: 'dark', // 也可以选 'light'
+  });
 
 preloadImages();
 
