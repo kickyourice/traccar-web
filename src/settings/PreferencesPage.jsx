@@ -52,6 +52,8 @@ const deviceFields = [
 ];
 
 const PreferencesPage = () => {
+  // 【新增】在这里统一获取服务器端的默认卡片配置
+  const serverPositionItems = useSelector((state) => state.session.server.attributes.positionItems);
   const { classes } = useSettingsStyles();
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -190,13 +192,11 @@ const PreferencesPage = () => {
                     }
                     return positionAttributes[option]?.name || option;
                   }}
+                  // 修改新用户卡片显示项目，优先级从高到底如下，用户自行设置->从服务器端拉取（tc_servers-attributes-positionItems）->固定值
                   value={
-                    attributes.positionItems?.split(',') || [
-                      'fixTime',
-                      'address',
-                      'speed',
-                      'totalDistance',
-                    ]
+                         attributes.positionItems?.split(',') ||
+                         serverPositionItems?.split(',') || 
+                         ['fixTime', 'address', 'speed', 'totalDistance']
                   }
                   onChange={(_, newValue) => {
                     setAttributes({
