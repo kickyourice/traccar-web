@@ -1,119 +1,57 @@
 import maplibregl from 'maplibre-gl';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react'; // 引入 useRef
 import { map } from './core/MapView';
 import { useTheme } from '@mui/material';
-import { wgs84ToGcj02 } from '../common/util/converter';
-
-// 全局变量，强制单例
-let activeWatchId = null;
-let lastWatchRequestTime = 0;
 
 const MapCurrentLocation = () => {
   const theme = useTheme();
-  const isUnmounted = useRef(false);
+  const controlRef = useRef(null); // 使用 Ref 准确持有控件引用
 
   useEffect(() => {
-    isUnmounted.current = false;
-
-    // --- 重点 1：注入全局样式，物理压制多余蓝点 ---
-    const styleId = 'force-single-dot-style';
-    if (!document.getElementById(styleId)) {
-      const style = document.createElement('style');
-      style.id = styleId;
-      // 如果有多个蓝点 DOM，只显示最后一个，隐藏其他的
-      style.innerHTML = `
-        .maplibregl-user-location-dot { display: none !important; }
-        .maplibregl-user-location-dot:last-of-type { display: block !important; }
-      `;
-      document.head.appendChild(style);
-    }
-
-    const proto = Geolocation.prototype;
-    const nativeGetCurrentPosition = proto.getCurrentPosition;
-    const nativeWatchPosition = proto.watchPosition;
-    const nativeClearWatch = proto.clearWatch;
-
-    const fastOptions = { 
-      enableHighAccuracy: true, 
-      maximumAge: 0, 
-      timeout: 3000 
+    // 1. 物理清理残留按钮：解决多次点击报表产生的 UI 堆叠
+    const cleanupExisting = () => {
+      const oldButtons = document.querySelectorAll('.maplibregl-ctrl-geolocate');
+      oldButtons.forEach((btn) => btn.parentElement?.remove());
     };
+    cleanupExisting();
 
-    const positionWrapper = (success) => (pos) => {
-      if (isUnmounted.current) return;
-      const [lon, lat] = wgs84ToGcj02(pos.coords.longitude, pos.coords.latitude);
-      const mockedPos = {
-        ...pos,
-        coords: { ...pos.coords, longitude: lon, latitude: lat },
-        timestamp: pos.timestamp || Date.now(),
-      };
-      success(mockedPos);
-    };
-
-    // --- 重点 2：原子化 watchPosition ---
-    proto.watchPosition = function (s, e, o) {
-      const now = Date.now();
-      // 这里的间隔拉长到 1 秒，彻底封死瞬间连发
-      if (now - lastWatchRequestTime < 1000) {
-        return activeWatchId; 
-      }
-      lastWatchRequestTime = now;
-
-      if (activeWatchId !== null) {
-        try {
-          nativeClearWatch.call(this, activeWatchId);
-        } catch (err) {}
-      }
-      
-      const id = nativeWatchPosition.call(this, positionWrapper(s), e, { ...o, ...fastOptions });
-      activeWatchId = id;
-      return id;
-    };
-
-    proto.getCurrentPosition = function (s, e, o) {
-      return nativeGetCurrentPosition.call(this, positionWrapper(s), e, { ...o, ...fastOptions });
-    };
-
+    // 2. 初始化控件
     const control = new maplibregl.GeolocateControl({
-      positionOptions: fastOptions,
-      trackUserLocation: true,
-      showUserLocation: true,
-      showAccuracyCircle: false,
+      positionOptions: {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0, // 强制获取实时位置，不使用缓存，配合纠偏更准
+      },
+      trackUserLocation: true, // 建议开启，点击后地图能随人移动
+      showUserLocation: true,  // 显示蓝点
+      showAccuracyCircle: false, // 隐藏浅蓝色的大圆圈，界面更清爽
     });
 
-    map.addControl(control, theme.direction === 'rtl' ? 'top-left' : 'top-right');
+    controlRef.current = control;
 
-    // 视觉补丁：清理按钮
-    const cleanupUI = () => {
-      const buttons = document.querySelectorAll('.maplibregl-ctrl-geolocate');
-      if (buttons.length > 1) {
-        for (let i = 0; i < buttons.length - 1; i++) {
-          buttons[i].style.display = 'none';
+    // 3. 添加到地图
+    try {
+      map.addControl(control, theme.direction === 'rtl' ? 'top-left' : 'top-right');
+    } catch (e) {
+      // 容错处理
+    }
+
+    // 4. 组件卸载时的清理
+    return () => {
+      if (controlRef.current) {
+        try {
+          if (controlRef.current.isTracking()) {
+            controlRef.current.stop();
+          }
+          map.removeControl(controlRef.current);
+        } catch (err) {
+          // 忽略地图实例可能已不存在的情况
+        } finally {
+          cleanupExisting(); // 最终物理清理
         }
       }
     };
-    const uiTimer = setTimeout(cleanupUI, 300);
-
-    return () => {
-      isUnmounted.current = true;
-      clearTimeout(uiTimer);
-
-      proto.getCurrentPosition = nativeGetCurrentPosition;
-      proto.watchPosition = nativeWatchPosition;
-
-      try {
-        map.stop();
-        if (control.isTracking()) {
-          control.stop();
-        }
-        if (activeWatchId !== null) {
-          navigator.geolocation.clearWatch(activeWatchId);
-          activeWatchId = null;
-        }
-        map.removeControl(control);
-      } catch (err) {}
-    };
-  }, [theme.direction]);
+  }, [theme.direction]); // 监听方向变化以适配 RTL 布局
 
   return null;
 };

@@ -1,3 +1,6 @@
+import { initGlobalLocationProxy } from './common/util/locationInitializer';
+// 在应用启动前完成拦截
+initGlobalLocationProxy();
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
