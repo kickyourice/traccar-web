@@ -62,13 +62,25 @@ export default async (input, init) => {
         if (Array.isArray(obj)) {
           return obj.map(transform);
         } else if (obj !== null && typeof obj === 'object') {
-          // 1. 处理标准位置坐标 (Position)
+          // 1. 精准抓取 route 字段 (组合报表的蓝色轨迹线)
+          if (obj.route && Array.isArray(obj.route)) {
+            obj.route = obj.route.map((point) => {
+              if (Array.isArray(point) && point.length === 2) {
+                // 注意：Traccar 这里的 route 数组内部通常是 [longitude, latitude]
+                const [lon, lat] = point;
+                const [tLon, tLat] = wgs84ToGcj02(lon, lat);
+                return [tLon, tLat];
+              }
+              return point;
+            });
+          }
+          // 2. 处理标准位置坐标 (Position)
           if (typeof obj.latitude === 'number' && typeof obj.longitude === 'number') {
             const [lon, lat] = wgs84ToGcj02(obj.longitude, obj.latitude);
             obj.longitude = lon;
             obj.latitude = lat;
           }
-          // 2. 处理行程报表坐标 (Trips)
+          // 3. 处理行程报表坐标 (Trips)
           if (typeof obj.startLat === 'number' && typeof obj.startLon === 'number') {
             const [lon, lat] = wgs84ToGcj02(obj.startLon, obj.startLat);
             obj.startLat = lat;
@@ -79,15 +91,16 @@ export default async (input, init) => {
             obj.endLat = lat;
             obj.endLon = lon;
           }
-          // 3. 处理围栏显示坐标 (Geofence Area)
+          // 4. 处理围栏显示坐标 (Geofence Area)
           if (obj.area && typeof obj.area === 'string') {
             obj.area = transformWkt(obj.area, wgs84ToGcj02);
           }
 
-          // 递归处理嵌套结构
+          // 递归处理嵌套结构 (必须显式赋值回对象)
           Object.keys(obj).forEach((key) => {
-            if (typeof obj[key] === 'object') {
-              transform(obj[key]);
+            // 避开已经处理过的 route 字段，防止重复转换
+            if (key !== 'route' && obj[key] !== null && typeof obj[key] === 'object') {
+              obj[key] = transform(obj[key]);
             }
           });
         }
