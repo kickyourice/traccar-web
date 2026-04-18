@@ -39,6 +39,8 @@ const MapRoutePoints = ({ positions, onClick, showSpeedControl }) => {
       id,
       type: 'symbol',
       source: id,
+      // 优化 1：设置最小缩放级别，建议放大到一定程度再显示方向箭头点
+      minzoom: 13,
       paint: {
         'text-color': ['get', 'color'],
       },
@@ -46,8 +48,10 @@ const MapRoutePoints = ({ positions, onClick, showSpeedControl }) => {
         'text-font': findFonts(map),
         'text-size': 12,
         'text-field': '▲',
-        'text-allow-overlap': true,
+        // 优化 2：关闭重叠显示，当地图点太挤时自动隐藏部分箭头，提升性能
+        'text-allow-overlap': false,
         'text-rotate': ['get', 'rotation'],
+        'text-rotation-alignment': 'map',
       },
     });
 
@@ -70,6 +74,9 @@ const MapRoutePoints = ({ positions, onClick, showSpeedControl }) => {
   }, [onMarkerClick]);
 
   useEffect(() => {
+    // 基础防御
+    if (!positions || positions.length === 0) return;
+
     const maxSpeed = positions.map((p) => p.speed).reduce((a, b) => Math.max(a, b), -Infinity);
     const minSpeed = positions.map((p) => p.speed).reduce((a, b) => Math.min(a, b), Infinity);
 
@@ -78,21 +85,27 @@ const MapRoutePoints = ({ positions, onClick, showSpeedControl }) => {
       map.addControl(control, theme.direction === 'rtl' ? 'bottom-right' : 'bottom-left');
     }
 
+    // --- 优化 3：根据数据总量动态计算抽稀步长 (Step) ---
+    // 点数越多，跳过的点越多。例如 2000 个点以上时，每 5 个点画一个箭头
+    const step = positions.length > 2000 ? 5 : (positions.length > 1000 ? 2 : 1);
+
     map.getSource(id)?.setData({
       type: 'FeatureCollection',
-      features: positions.map((position, index) => ({
-        type: 'Feature',
-        geometry: {
-          type: 'Point',
-          coordinates: [position.longitude, position.latitude],
-        },
-        properties: {
-          index,
-          id: position.id,
-          rotation: position.course,
-          color: getSpeedColor(position.speed, minSpeed, maxSpeed),
-        },
-      })),
+      features: positions
+        .filter((_, i) => i % step === 0) // 执行抽稀
+        .map((position, index) => ({
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [position.longitude, position.latitude],
+          },
+          properties: {
+            index: index * step, // 恢复原始索引，确保点击跳转正确
+            id: position.id,
+            rotation: position.course,
+            color: getSpeedColor(position.speed, minSpeed, maxSpeed),
+          },
+        })),
     });
     return () => map.removeControl(control);
   }, [onMarkerClick, positions, showSpeedControl]);

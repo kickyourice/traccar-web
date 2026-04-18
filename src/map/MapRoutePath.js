@@ -64,26 +64,48 @@ const MapRoutePath = ({ positions }) => {
   }, []);
 
   useEffect(() => {
-    const minSpeed = positions.map((p) => p.speed).reduce((a, b) => Math.min(a, b), Infinity);
-    const maxSpeed = positions.map((p) => p.speed).reduce((a, b) => Math.max(a, b), -Infinity);
+    // 基础防御，保持原样
+    if (!positions || positions.length === 0) return;
+
     const features = [];
-    for (let i = 0; i < positions.length - 1; i += 1) {
+
+    // --- 核心改动：仅在有指定颜色时改变逻辑 ---
+    if (reportColor) {
       features.push({
         type: 'Feature',
         geometry: {
           type: 'LineString',
-          coordinates: [
-            [positions[i].longitude, positions[i].latitude],
-            [positions[i + 1].longitude, positions[i + 1].latitude],
-          ],
+          coordinates: positions.map((p) => [p.longitude, p.latitude]),
         },
         properties: {
-          color: reportColor || getSpeedColor(positions[i + 1].speed, minSpeed, maxSpeed),
+          color: reportColor,
           width: mapLineWidth,
           opacity: mapLineOpacity,
         },
       });
+    } else {
+      // --- 完全保留修改前的原始写法 ---
+      const minSpeed = positions.map((p) => p.speed).reduce((a, b) => Math.min(a, b), Infinity);
+      const maxSpeed = positions.map((p) => p.speed).reduce((a, b) => Math.max(a, b), -Infinity);
+      for (let i = 0; i < positions.length - 1; i += 1) {
+        features.push({
+          type: 'Feature',
+          geometry: {
+            type: 'LineString',
+            coordinates: [
+              [positions[i].longitude, positions[i].latitude],
+              [positions[i + 1].longitude, positions[i + 1].latitude],
+            ],
+          },
+          properties: {
+            color: reportColor || getSpeedColor(positions[i + 1].speed, minSpeed, maxSpeed),
+            width: mapLineWidth,
+            opacity: mapLineOpacity,
+          },
+        });
+      }
     }
+
     map.getSource(id)?.setData({
       type: 'FeatureCollection',
       features,
