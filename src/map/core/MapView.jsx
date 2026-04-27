@@ -2,6 +2,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import maplibregl from 'maplibre-gl';
 import { googleProtocol } from 'maplibre-google-maps';
 import React, { useRef, useLayoutEffect, useEffect, useState, useMemo } from 'react';
+import { useLocation } from 'react-router-dom'; // 确保引入路由 Hook
 import { useTheme } from '@mui/material';
 import { SwitcherControl } from '../switcher/switcher';
 import { useAttributePreference, usePreference } from '../../common/util/preferences';
@@ -52,6 +53,7 @@ const initMap = async () => {
 
 const MapView = ({ children }) => {
   const theme = useTheme();
+  const location = useLocation(); // 获取当前路径
 
   const containerEl = useRef(null);
 
@@ -143,11 +145,25 @@ const MapView = ({ children }) => {
     };
   }, [containerEl]);
 
+  // 修改返回值部分：在这里拦截叠加层的渲染
   return (
     <div style={{ width: '100%', height: '100%' }} ref={containerEl}>
       {React.Children.map(children, (child) => {
-        if (React.isValidElement(child) && child.type.handlesMapReady) {
-          return React.cloneElement(child, { mapReady });
+        if (React.isValidElement(child)) {
+          // 判断逻辑：如果是回放页面，并且子组件是处理 Overlay 的组件
+          const isReplayPage = location.pathname.includes('/replay');
+          
+          // Traccar 的叠加层组件通常名为 MapOverlay
+          // 我们可以通过检查 child.type.name 或者 props 来识别
+          const isOverlayComponent = child.type.name === 'MapOverlay' || child.props.name === 'MapOverlay';
+
+          if (isReplayPage && isOverlayComponent) {
+            return null; // 如果是回放页，直接不渲染这个叠层组件
+          }
+
+          if (child.type.handlesMapReady) {
+            return React.cloneElement(child, { mapReady });
+          }
         }
         return mapReady ? child : null;
       })}
