@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
-import { Autocomplete, Checkbox, FormControlLabel, MenuItem, TextField } from '@mui/material';
+import { Autocomplete, Checkbox, FormControlLabel, TextField } from '@mui/material';
 import { useTranslation } from '../../common/components/LocalizationProvider';
 import { useRestriction } from '../../common/util/permissions';
 import { useEffectAsync } from '../../reactHelper';
@@ -97,11 +97,11 @@ const BaseCommandView = ({
             : t(prefixString('command', option.type))
         }
         renderOption={(props, option) => (
-          <MenuItem {...props} key={option.key} value={option.key}>
+          <li key={option.key} {...props}>
             {option.optionType === 'saved'
               ? option.description
               : t(prefixString('command', option.type))}
-          </MenuItem>
+          </li>
         )}
         isOptionEqualToValue={(option, value) => option.key === value.key}
         value={
@@ -117,6 +117,7 @@ const BaseCommandView = ({
           if (type === 'boolean') {
             return (
               <FormControlLabel
+                key={key}
                 control={
                   <Checkbox
                     checked={item.attributes[key]}
@@ -133,6 +134,7 @@ const BaseCommandView = ({
           }
           return (
             <TextField
+              key={key}
               type={type === 'number' ? 'number' : 'text'}
               value={item.attributes[key]}
               onChange={(e) => {

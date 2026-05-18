@@ -11,8 +11,8 @@ import {
   Tooltip,
 } from '@mui/material';
 import { makeStyles } from 'tss-react/mui';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlined';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutlined';
 import { useTranslation } from '../common/components/LocalizationProvider';
 import PageLayout from '../common/components/PageLayout';
 import ReportsMenu from './components/ReportsMenu';
@@ -34,7 +34,7 @@ const LogsPage = () => {
   useEffect(() => {
     dispatch(sessionActions.enableLogs(true));
     return () => dispatch(sessionActions.enableLogs(false));
-  }, []);
+  }, [dispatch]);
 
   const items = useSelector((state) => state.session.logs);
 

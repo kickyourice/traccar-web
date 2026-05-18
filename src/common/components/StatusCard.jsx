@@ -205,7 +205,7 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
               )}
               {position && (
                 <CardContent className={classes.content}>
-                  <Table size="small" classes={{ root: classes.table }}>
+                  <Table size="small" className={classes.table}>
                     <TableBody>
                       {positionItems
                         .split(',')
@@ -241,7 +241,7 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
                   </Table>
                 </CardContent>
               )}
-              <CardActions classes={{ root: classes.actions }} disableSpacing>
+              <CardActions className={classes.actions} disableSpacing>
                 <Tooltip title={t('sharedExtra')}>
                   <IconButton
                     color="secondary"
@@ -291,6 +291,12 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
       </div>
       {position && (
         <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
+          <MenuItem
+            onClick={() => navigate(`/stream?deviceId=${deviceId}`)}
+            disabled={position.protocol !== 'jt808'}
+          >
+            {t('linkLiveVideo')}
+          </MenuItem>
           {!readonly && <MenuItem onClick={handleGeofence}>{t('sharedCreateGeofence')}</MenuItem>}
           <MenuItem
             component="a"
@@ -326,7 +332,7 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
           )}
           {!shareDisabled && !user.temporary && (
             <MenuItem onClick={() => navigate(`/settings/device/${deviceId}/share`)}>
-              <Typography color="secondary">{t('deviceShare')}</Typography>
+              <Typography color="secondary">{t('sharedShare')}</Typography>
             </MenuItem>
           )}
         </Menu>

@@ -10,10 +10,9 @@ import {
   Snackbar,
   IconButton,
   Tooltip,
-  Box,
   InputAdornment,
 } from '@mui/material';
-import ReactCountryFlag from 'react-country-flag';
+import CountryFlag from 'react-country-flag';
 import { makeStyles } from 'tss-react/mui';
 import CloseIcon from '@mui/icons-material/Close';
 import VpnLockIcon from '@mui/icons-material/VpnLock';
@@ -64,6 +63,9 @@ const useStyles = makeStyles()((theme) => ({
   },
   link: {
     cursor: 'pointer',
+  },
+  flag: {
+    marginRight: theme.spacing(1),
   },
 }));
 
@@ -183,9 +185,9 @@ const LoginPage = () => {
             <Select value={language} onChange={(e) => setLocalLanguage(e.target.value)}>
               {languageList.map((it) => (
                 <MenuItem key={it.code} value={it.code}>
-                  <Box component="span" sx={{ mr: 1 }}>
-                    <ReactCountryFlag countryCode={it.country} svg />
-                  </Box>
+                  <span className={classes.flag}>
+                    <CountryFlag countryCode={it.country} svg />
+                  </span>
                   {it.name}
                 </MenuItem>
               ))}

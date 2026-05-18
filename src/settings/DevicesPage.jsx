@@ -14,14 +14,14 @@ import {
 } from '@mui/material';
 import LinkIcon from '@mui/icons-material/Link';
 import { useTheme } from '@mui/material/styles';
-import { useEffectAsync } from '../reactHelper';
+import { useEffectAsync, useScrollToLoad, pageSize } from '../reactHelper';
 import { useTranslation } from '../common/components/LocalizationProvider';
 import PageLayout from '../common/components/PageLayout';
 import SettingsMenu from './components/SettingsMenu';
 import CollectionFab from './components/CollectionFab';
 import CollectionActions from './components/CollectionActions';
 import TableShimmer from '../common/components/TableShimmer';
-import SearchHeader, { filterByKeyword } from './components/SearchHeader';
+import SearchHeader from './components/SearchHeader';
 import { formatAddress, formatStatus, formatTime } from '../common/util/formatter';
 import { useDeviceReadonly, useManager } from '../common/util/permissions';
 import { usePreference } from '../common/util/preferences';
@@ -52,19 +52,31 @@ const DevicesPage = () => {
   const [showAll, setShowAll] = usePersistedState('showAllDevices', false);
   const [loading, setLoading] = useState(false);
 
-  useEffectAsync(async () => {
+  const loadItems = async (offset) => {
     setLoading(true);
     try {
-      const query = new URLSearchParams({ all: showAll });
+      const query = new URLSearchParams({ all: showAll, limit: pageSize, offset });
+      if (searchKeyword) {
+        query.append('keyword', searchKeyword);
+      }
       const response = await fetchOrThrow(`/api/devices?${query.toString()}`);
-      setItems(await response.json());
+      const data = await response.json();
+      setItems((previous) => (offset ? [...previous, ...data] : data));
+      setHasMore(data.length >= pageSize);
     } finally {
       setLoading(false);
     }
-  }, [timestamp, showAll]);
+  };
+
+  const { sentinelRef, hasMore, setHasMore } = useScrollToLoad(() => loadItems(items.length));
+
+  useEffectAsync(async () => {
+    setItems([]);
+    await loadItems(0);
+  }, [timestamp, showAll, searchKeyword]);
 
   const handleExport = async () => {
-    const data = items.filter(filterByKeyword(searchKeyword)).map((item) => ({
+    const data = items.map((item) => ({
       [t('sharedName')]: item.name,
       [t('deviceIdentifier')]: item.uniqueId,
       [t('groupParent')]: item.groupId ? groups[item.groupId]?.name : null,
@@ -109,45 +121,42 @@ const DevicesPage = () => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {!loading ? (
-            items.filter(filterByKeyword(searchKeyword)).map((item) => (
-              <TableRow key={item.id}>
-                <TableCell>{item.name}</TableCell>
-                <TableCell>{item.uniqueId}</TableCell>
-                <TableCell>{item.groupId ? groups[item.groupId]?.name : null}</TableCell>
-                <TableCell>{item.phone}</TableCell>
-                <TableCell>{item.model}</TableCell>
-                <TableCell>{item.contact}</TableCell>
-                <TableCell>{formatTime(item.expirationTime, 'date')}</TableCell>
-                <TableCell>
-                  {positions[item.id] && (
-                    <AddressValue
-                      latitude={positions[item.id].latitude}
-                      longitude={positions[item.id].longitude}
-                      originalAddress={positions[item.id]?.address}
-                    />
-                  )}
-                </TableCell>
-                {manager && (
-                  <TableCell>
-                    <DeviceUsersValue deviceId={item.id} />
-                  </TableCell>
-                )}
-                <TableCell className={classes.columnAction} padding="none">
-                  <CollectionActions
-                    itemId={item.id}
-                    editPath="/settings/device"
-                    endpoint="devices"
-                    setTimestamp={setTimestamp}
-                    customActions={[actionConnections]}
-                    readonly={deviceReadonly}
+          {items.map((item) => (
+            <TableRow key={item.id}>
+              <TableCell>{item.name}</TableCell>
+              <TableCell>{item.uniqueId}</TableCell>
+              <TableCell>{item.groupId ? groups[item.groupId]?.name : null}</TableCell>
+              <TableCell>{item.phone}</TableCell>
+              <TableCell>{item.model}</TableCell>
+              <TableCell>{item.contact}</TableCell>
+              <TableCell>{formatTime(item.expirationTime, 'date')}</TableCell>
+              <TableCell>
+                {positions[item.id] && (
+                  <AddressValue
+                    latitude={positions[item.id].latitude}
+                    longitude={positions[item.id].longitude}
+                    originalAddress={positions[item.id]?.address}
                   />
+                )}
+              </TableCell>
+              {manager && (
+                <TableCell>
+                  <DeviceUsersValue deviceId={item.id} />
                 </TableCell>
-              </TableRow>
-            ))
-          ) : (
-            <TableShimmer columns={manager ? 9 : 8} endAction />
-          )}
+              )}
+              <TableCell className={classes.columnAction} padding="none">
+                <CollectionActions
+                  itemId={item.id}
+                  editPath="/settings/device"
+                  endpoint="devices"
+                  setTimestamp={setTimestamp}
+                  customActions={[actionConnections]}
+                  readonly={deviceReadonly}
+                />
+              </TableCell>
+            </TableRow>
+          ))}
+          {loading && <TableShimmer columns={manager ? 9 : 8} endAction />}
         </TableBody>
         <TableFooter>
           <TableRow>
@@ -173,6 +182,7 @@ const DevicesPage = () => {
           </TableRow>
         </TableFooter>
       </Table>
+      {hasMore && !loading && <div ref={sentinelRef} />}
       <CollectionFab editPath="/settings/device" />
     </PageLayout>
   );

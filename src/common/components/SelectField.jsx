@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { MenuItem, Autocomplete, TextField, Chip } from '@mui/material';
+import { Autocomplete, TextField, Chip } from '@mui/material';
 import { makeStyles } from 'tss-react/mui';
 import { useEffectAsync } from '../../reactHelper';
 import fetchOrThrow from '../util/fetchOrThrow';
@@ -73,10 +73,10 @@ const SelectField = ({
         className={multiple && singleLine ? classes.autocompleteMultiple : undefined}
         options={items}
         getOptionLabel={getOptionLabel}
-        renderOption={(props, option) => (
-          <MenuItem {...props} key={keyGetter(option)} value={keyGetter(option)}>
+        renderOption={({ key, ...props }, option) => (
+          <li key={keyGetter(option) || key} {...props}>
             {titleGetter(option)}
-          </MenuItem>
+          </li>
         )}
         isOptionEqualToValue={(option, selectedOption) =>
           keyGetter(option) === keyGetter(selectedOption)
@@ -98,8 +98,8 @@ const SelectField = ({
                 return (
                   <>
                     <Chip
-                      {...getItemProps({ index: 0 })}
                       key={keyGetter(tagValue[0])}
+                      {...getItemProps({ index: 0 })}
                       label={titleGetter(tagValue[0])}
                       size="small"
                       sx={{ minWidth: 0 }}
@@ -121,11 +121,12 @@ const SelectField = ({
             helperText={helperText}
             placeholder={multiple && !autocompleteValue.length ? placeholder : undefined}
             slotProps={{
+              ...params.slotProps,
               inputLabel: {
-                ...params.InputLabelProps,
+                ...params.slotProps?.inputLabel,
                 shrink:
                   (multiple && !autocompleteValue.length && Boolean(placeholder)) ||
-                  params.InputLabelProps?.shrink,
+                  params.slotProps?.inputLabel?.shrink,
               },
             }}
           />

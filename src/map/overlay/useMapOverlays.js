@@ -3,15 +3,19 @@ import { useSelector } from 'react-redux';
 import { useTranslation } from '../../common/components/LocalizationProvider';
 import { useAttributePreference } from '../../common/util/preferences';
 
-const sourceCustom = (urls) => ({
-  type: 'raster',
-  tiles: urls,
-  tileSize: 256,
-  maxzoom: 18,
-});
+const sourceCustom = (urls, maxZoom) => {
+  const source = {
+    type: 'raster',
+    tiles: urls,
+    tileSize: 256,
+    maxzoom: maxZoom,
+  };
+  Object.keys(source).forEach((key) => source[key] === undefined && delete source[key]);
+  return source;
+};
 
 const sourceOpenWeather = (style, key) =>
-  sourceCustom([`https://tile.openweathermap.org/map/${style}/{z}/{x}/{y}.png?appid=${key}`]);
+  sourceCustom([`https://tile.openweathermap.org/map/${style}/{z}/{x}/{y}.png?appid=${key}`], 18);
 
 export default () => {
   const t = useTranslation();
@@ -27,22 +31,23 @@ export default () => {
       {
         id: 'googleTraffic',
         title: t('mapGoogleTraffic'),
-        source: sourceCustom([
-          `google://satellite/{z}/{x}/{y}?key=${googleKey}&layerType=layerTraffic&overlay=true`,
-        ]),
+        source: sourceCustom(
+          [`google://satellite/{z}/{x}/{y}?key=${googleKey}&layerType=layerTraffic&overlay=true`],
+          20,
+        ),
         available: Boolean(googleKey),
         attribute: 'googleKey',
       },
       {
         id: 'openSeaMap',
         title: t('mapOpenSeaMap'),
-        source: sourceCustom(['https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png']),
+        source: sourceCustom(['https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png'], 18),
         available: true,
       },
       {
         id: 'openRailwayMap',
         title: t('mapOpenRailwayMap'),
-        source: sourceCustom(['https://tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png']),
+        source: sourceCustom(['https://tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png'], 19),
         available: true,
       },
       {
@@ -83,18 +88,24 @@ export default () => {
       {
         id: 'tomTomFlow',
         title: t('mapTomTomFlow'),
-        source: sourceCustom([
-          `https://api.tomtom.com/traffic/map/4/tile/flow/absolute/{z}/{x}/{y}.png?key=${tomTomKey}`,
-        ]),
+        source: sourceCustom(
+          [
+            `https://api.tomtom.com/traffic/map/4/tile/flow/absolute/{z}/{x}/{y}.png?key=${tomTomKey}`,
+          ],
+          22,
+        ),
         available: Boolean(tomTomKey),
         attribute: 'tomTomKey',
       },
       {
         id: 'tomTomIncidents',
         title: t('mapTomTomIncidents'),
-        source: sourceCustom([
-          `https://api.tomtom.com/traffic/map/4/tile/incidents/s3/{z}/{x}/{y}.png?key=${tomTomKey}`,
-        ]),
+        source: sourceCustom(
+          [
+            `https://api.tomtom.com/traffic/map/4/tile/incidents/s3/{z}/{x}/{y}.png?key=${tomTomKey}`,
+          ],
+          22,
+        ),
         available: Boolean(tomTomKey),
         attribute: 'tomTomKey',
       },
@@ -106,6 +117,7 @@ export default () => {
             (i) =>
               `https://${i}.traffic.maps.ls.hereapi.com/maptile/2.1/flowtile/newest/normal.day/{z}/{x}/{y}/256/png8?apiKey=${hereKey}`,
           ),
+          20,
         ),
         available: Boolean(hereKey),
         attribute: 'hereKey',
